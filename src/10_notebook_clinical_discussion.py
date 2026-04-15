@@ -1,4 +1,4 @@
-"""Notebook 10 — Clinical Discussion (advanced)
+"""Notebook 10 — Clinical Discussion
 Outputs to outputs/notebook_10/
 
 Advanced additions beyond the enhanced version:
