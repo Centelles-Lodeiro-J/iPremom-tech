@@ -86,83 +86,105 @@ def draw_table(ax, headers, rows, col_x, col_w, y_start=0.92,
 # ══════════════════════════════════════════════════════════════════════════════
 # FIG 1 — Deterministic fixes summary table
 # ══════════════════════════════════════════════════════════════════════════════
+
 def fig_deterministic_fixes(raw, out):
     fixes = [
-        ("Whitespace strip",     "All string columns",
-         "Phantom categories: 'Asian '/'European '",
-         "str.strip() → 4 true ethnicity categories",
-         "safe — no statistics needed"),
-        ("Typo correction",      "er_status_measured_by_ihc",
-         "'Positve' in 1,442 rows (75.7%)",
-         "Rename → 'Positive'",
-         "safe — deterministic text match"),
-        ("Cross-field fix",      "cancer_type (patient 284)",
-         "'Breast Sarcoma' contradicts IDC in 4 other fields",
+        ("Whitespace strip", "All string columns",
+         "Trailing spaces created phantom ethnicity categories",
+         "str.strip() on all string columns",
+         "Deterministic text normalization"),
+        ("Typo correction", "er_status_measured_by_ihc",
+         "Malformed positive label in ER IHC field",
+         "Rename typo(s) → 'Positive'",
+         "Exact string correction"),
+        ("Cross-field fix", "cancer_type (patient 284)",
+         "'Breast Sarcoma' contradicted by IDC-linked fields",
          "Recode → 'Breast Cancer'",
-         "safe — all corroborating fields agree"),
-        ("Truncated entry",      "cancer_type_detailed",
-         "17 rows = 'Breast' (incomplete)",
-         "Set NaN → mode-imputed later",
-         "safe — unresolvable without source"),
-        ("Out-of-range → NaN",   "geo_location_id",
-         "17 rows = 0 (valid range: 1–100)",
-         "Set NaN → column excluded from models",
-         "safe — confirmed invalid by range check"),
+         "Supported by multiple corroborating fields"),
+        ("Truncated entry", "cancer_type_detailed",
+         "Rows with incomplete value 'Breast'",
+         "Set NaN → impute later",
+         "Unresolvable without source"),
+        ("Out-of-range → NaN", "geo_location_id",
+         "Rows with invalid value 0",
+         "Set NaN and exclude from models",
+         "Outside documented valid range"),
         ("Corrupt values → NaN", "age_at_diagnosis",
-         "18 rows outside [18, 100]: min=−1, max=10,000",
-         "Set NaN → median-imputed post-split",
-         "safe — biologically implausible"),
-        ("Binary recode",        "death_from_cancer",
-         "String: 'Died of Disease' / 'Living' / 'Died of Other Causes'",
+         "Rows outside biologically plausible [18, 100]",
+         "Set NaN → train-median impute later",
+         "Biologically impossible values"),
+        ("Binary recode", "death_from_cancer",
+         "String outcome categories",
          "Died of Disease=1, else=0",
-         "safe — explicit mapping, no ambiguity"),
+         "Explicit rule-based mapping"),
     ]
 
-    fig, axes = plt.subplots(1, 2, figsize=(18, 7))
+    # Compute counts for concise annotations
+    raw_eth_clean = raw["ethnicity"].astype(str).str.strip()
+    eth_before = raw["ethnicity"].value_counts(dropna=False)
+    eth_after = raw_eth_clean.value_counts(dropna=False)
+    all_cats = sorted(set(eth_before.index.tolist()) | set(eth_after.index.tolist()), key=lambda x: str(x))
+    typo_n = int(raw["er_status_measured_by_ihc"].astype(str).str.strip().isin(["Posyte", "Positve"]).sum())
+    sarcoma_n = int(raw["cancer_type"].astype(str).str.strip().eq("Breast Sarcoma").sum())
+    trunc_n = int(raw["cancer_type_detailed"].astype(str).str.strip().eq("Breast").sum())
+    geo_n = int((raw["geo_location_id"] == 0).sum())
+    age_n = int((~raw["age_at_diagnosis"].between(18, 100)).fillna(False).sum())
+    death_levels = raw["death_from_cancer"].dropna().astype(str).str.strip().nunique()
 
-    # Left: summary table
-    headers = ["Fix type", "Column", "Issue found", "Action taken", "Safety"]
-    col_x = [0.0, 0.13, 0.28, 0.57, 0.78]
-    col_w = [0.13, 0.15, 0.29, 0.21, 0.22]
+    fig = plt.figure(figsize=(20, 8.5))
+    gs = fig.add_gridspec(2, 2, width_ratios=[1.45, 1.0], height_ratios=[0.16, 0.84],
+                          wspace=0.18, hspace=0.0)
+    ax_head = fig.add_subplot(gs[0, :]); ax_head.axis("off")
+    ax_table = fig.add_subplot(gs[1, 0]); ax_chart = fig.add_subplot(gs[1, 1])
+
+    ax_head.text(0.5, 0.82, "Stage 2 — Deterministic Fixes",
+                 ha="center", va="center", fontsize=14, fontweight="bold", color=HEAD_BG)
+    ax_head.text(
+        0.5, 0.36,
+        "All fixes are rule-based and applied before split. "
+        "The table summarizes what changed; the chart shows the whitespace correction example.",
+        ha="center", va="center", fontsize=10, color="#555"
+    )
+
+    headers = ["Fix type", "Column", "Issue found", "Action taken", "Why safe"]
+    col_x = [0.00, 0.15, 0.31, 0.60, 0.80]
+    col_w = [0.15, 0.16, 0.29, 0.20, 0.20]
 
     def bg(row, i):
         return ROW_A if i % 2 == 0 else ROW_B
 
-    draw_table(axes[0], headers, fixes, col_x, col_w, bg_fn=bg)
-    axes[0].set_title("Deterministic Fixes Applied\n"
-                      "All applied before split — no statistics used",
-                      pad=15)
+    draw_table(ax_table, headers, fixes, col_x, col_w, y_start=0.96, row_h=0.097, head_h=0.08, bg_fn=bg)
+    ax_table.set_title(
+        "Deterministic fixes summary\n"
+        f"ER-IHC typo={typo_n} rows | sarcoma recode={sarcoma_n} | truncated detail={trunc_n} | "
+        f"geo zeros={geo_n} | corrupt ages={age_n} | death levels={death_levels}",
+        pad=12
+    )
 
-    # Right: ethnicity before/after
-    raw_eth  = raw["ethnicity"].str.strip().value_counts()
-    raw_orig = raw["ethnicity"].value_counts()
-    ax = axes[1]
-    x = np.arange(len(raw_eth))
-    bars_before = ax.bar(x - 0.2, raw_orig.reindex(raw_eth.index).values,
-                         width=0.35, label="Before strip",
-                         color="#e74c3c", alpha=0.7)
-    bars_after  = ax.bar(x + 0.2, raw_eth.values,
-                         width=0.35, label="After strip",
-                         color="#2ecc71", alpha=0.7)
-    ax.set_xticks(x)
-    ax.set_xticklabels(raw_eth.index, rotation=20, ha="right")
-    ax.set_ylabel("Count")
-    ax.set_title("Ethnicity: whitespace fix collapses 5 → 4 categories\n"
-                 "'European ' and 'Asian ' merged with clean versions")
-    ax.legend(fontsize=9)
-    # Annotate the phantom categories
-    for i, (label, val_b, val_a) in enumerate(
-            zip(raw_eth.index, raw_orig.reindex(raw_eth.index).values, raw_eth.values)):
-        if val_b != val_a:
-            ax.annotate(f"Merged\n+{val_b-val_a}",
-                        xy=(i - 0.2, val_b),
-                        xytext=(i - 0.2, val_b + 15),
-                        ha="center", fontsize=7, color="#e74c3c",
-                        arrowprops=dict(arrowstyle="->", color="#e74c3c"))
+    x = np.arange(len(all_cats))
+    before_vals = eth_before.reindex(all_cats).fillna(0).values
+    after_vals = eth_after.reindex(all_cats).fillna(0).values
+    ax_chart.bar(x - 0.18, before_vals, width=0.34, label="Before strip", color="#e74c3c", alpha=0.75)
+    ax_chart.bar(x + 0.18, after_vals, width=0.34, label="After strip", color="#2ecc71", alpha=0.75)
+    ax_chart.set_xticks(x)
+    ax_chart.set_xticklabels([str(c) for c in all_cats], rotation=20, ha="right")
+    ax_chart.set_ylabel("Count")
+    ax_chart.set_title("Ethnicity cleanup example")
+    ax_chart.legend(fontsize=9, loc="upper right")
 
-    fig.suptitle("Stage 2 — Deterministic Fixes\n"
-                 "No imputation values used — all fixes are rule-based",
-                 fontsize=12, fontweight="bold")
+    # Simple non-overlapping text box instead of per-bar arrow overlays
+    n_before = raw["ethnicity"].nunique(dropna=True)
+    n_after = raw_eth_clean.nunique(dropna=True)
+    ax_chart.text(
+        0.02, 0.98,
+        f"Apparent categories before strip: {n_before}\n"
+        f"True categories after strip: {n_after}\n"
+        f"Interpretation: whitespace created duplicate labels\n"
+        f"e.g. 'European ' merged into 'European'",
+        transform=ax_chart.transAxes, va="top", fontsize=8.5,
+        bbox=dict(boxstyle="round", facecolor="white", edgecolor="#cccccc", alpha=0.95)
+    )
+
     fig.tight_layout()
     save(fig, out / "09_deterministic_fixes.png")
 

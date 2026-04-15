@@ -53,7 +53,7 @@ CLINICAL = [
     "er_status","neoplasm_histologic_grade","her2_status_measured_by_snp6","her2_status",
     "tumor_other_histologic_subtype","hormone_therapy","inferred_menopausal_state",
     "integrative_cluster","primary_tumor_laterality","lymph_nodes_examined_positive",
-    "mutation_count","nottingham_prognostic_index","overall_survival_months",
+    "mutation_count","nottingham_prognostic_index","oncotree_code","overall_survival_months",
     "overall_survival","pr_status","radio_therapy","3-gene_classifier_subtype",
     "tumor_size","tumor_stage","death_from_cancer",
 ]
@@ -228,6 +228,8 @@ def fig_km_pam50(df, out):
 def fig_km_grade_receptor(df, out):
     """All KM curves and log-rank tests computed here."""
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    p_er = np.nan
+    p_her2 = np.nan
 
     # Panel 1: by grade
     grade_colors = {1.0:"#2ecc71", 2.0:"#f39c12", 3.0:"#e74c3c"}
@@ -275,9 +277,13 @@ def fig_km_grade_receptor(df, out):
         p_er = log_rank_p(er_t["Positive"], er_e["Positive"],
                           er_t["Negative"], er_e["Negative"])
     axes[1].set_xlabel("Months"); axes[1].set_ylabel("Survival probability")
+    er_p_text = (
+        "p=NA" if pd.isna(p_er)
+        else ("p<0.001" if p_er < 0.001 else f"p={p_er:.3f}")
+    )
     axes[1].set_title(
         f"KM by ER status\n"
-        f"Log-rank: {'p<0.001' if p_er<0.001 else f'p={p_er:.3f}'}\n"
+        f"Log-rank: {er_p_text}\n"
         f"ER+ shows better prognosis [clinically expected]"
     )
     axes[1].legend(fontsize=9); axes[1].set_ylim(0, 1.05)
@@ -300,9 +306,13 @@ def fig_km_grade_receptor(df, out):
         p_her2 = log_rank_p(her2_t["Positive"], her2_e["Positive"],
                              her2_t["Negative"], her2_e["Negative"])
     axes[2].set_xlabel("Months"); axes[2].set_ylabel("Survival probability")
+    her2_p_text = (
+        "p=NA" if pd.isna(p_her2)
+        else ("p<0.001" if p_her2 < 0.001 else f"p={p_her2:.3f}")
+    )
     axes[2].set_title(
         f"KM by HER2 status\n"
-        f"Log-rank: {'p<0.001' if p_her2<0.001 else f'p={p_her2:.3f}'}\n"
+        f"Log-rank: {her2_p_text}\n"
         f"Note: HER2+ in METABRIC era — targeted therapy limited"
     )
     axes[2].legend(fontsize=9); axes[2].set_ylim(0, 1.05)
@@ -367,7 +377,8 @@ def fig_gp_pam50_heatmap(df_train, gp_cols, out):
     # Left: heatmap (mean scaled GP score)
     plot_mat = mean_mat[prog_order].T
     plot_mat.index = [bio_short.get(c, c) for c in plot_mat.index]
-    vmax = max(abs(plot_mat.values[~np.isnan(plot_mat.values)]))
+    non_na = plot_mat.values[~np.isnan(plot_mat.values)]
+    vmax = float(np.max(np.abs(non_na))) if len(non_na) else 1.0
     sns.heatmap(plot_mat, cmap="RdBu_r", center=0,
                 vmin=-vmax, vmax=vmax, ax=axes[0],
                 linewidths=0.5, square=False,
@@ -420,16 +431,12 @@ def fig_gp_pam50_heatmap(df_train, gp_cols, out):
 # ══════════════════════════════════════════════════════════════════════════════
 # FIG 4 — Gene programme spotlight
 # ══════════════════════════════════════════════════════════════════════════════
-def fig_gp_spotlight(df_train, gp_cols, H, out):
+def fig_gp_spotlight(df_train, gp_cols, out):
     """
     Shows distribution of 4 key programmes across PAM50 and vs clinical vars.
     All correlations and distributions computed here.
     Pathway biological interpretations are manually annotated.
     """
-    # Key programmes to spotlight — chosen by highest F-stat vs PAM50
-    # Computed above in fig_gp_pam50_heatmap; here we hardcode the 4
-    # most biologically interpretable ones.
-    # NOTE: selection rationale is manually curated.
     spotlight = [
         ("gene_programme_10", "GP10 — HER2/epithelial\n[ERBB2, CDH1, AR]",
          "Expected: highest in Her2-enriched subtype"),
@@ -444,65 +451,93 @@ def fig_gp_spotlight(df_train, gp_cols, H, out):
     fig, axes = plt.subplots(2, 4, figsize=(18, 9))
 
     for col_i, (gp, label, expectation) in enumerate(spotlight):
-        # Row 0: violin plot by PAM50
+        if gp not in df_train.columns:
+            axes[0, col_i].axis("off")
+            axes[1, col_i].axis("off")
+            continue
+
         ax_vln = axes[0, col_i]
-        pam_groups = [df_train.loc[df_train["pam50_+_claudin-low_subtype"]==sub, gp].dropna()
-                      for sub in PAM50_ORDER]
-        parts = ax_vln.violinplot(
-            [g.values for g in pam_groups if len(g) > 2],
-            positions=range(len([g for g in pam_groups if len(g)>2])),
-            showmedians=True)
-        valid_subs = [sub for sub, g in zip(PAM50_ORDER, pam_groups) if len(g)>2]
-        for body, sub in zip(parts["bodies"], valid_subs):
-            body.set_facecolor(PAM50_COLORS.get(sub, "grey"))
-            body.set_alpha(0.7)
+        pam_groups = [
+            df_train.loc[df_train["pam50_+_claudin-low_subtype"] == sub, gp].dropna()
+            for sub in PAM50_ORDER
+        ]
+        valid_groups = [g.values for g in pam_groups if len(g) > 2]
+        valid_subs = [sub for sub, g in zip(PAM50_ORDER, pam_groups) if len(g) > 2]
+
+        if valid_groups:
+            parts = ax_vln.violinplot(
+                valid_groups,
+                positions=range(len(valid_groups)),
+                showmedians=True,
+            )
+            for body, sub in zip(parts["bodies"], valid_subs):
+                body.set_facecolor(PAM50_COLORS.get(sub, "grey"))
+                body.set_alpha(0.7)
+
         ax_vln.set_xticks(range(len(valid_subs)))
         ax_vln.set_xticklabels(valid_subs, rotation=35, ha="right", fontsize=8)
         ax_vln.set_ylabel("GP score")
-        # ANOVA
-        f, p = stats.f_oneway(*[g.values for g in pam_groups if len(g)>2])
+
+        if len(valid_groups) >= 2:
+            f, p = stats.f_oneway(*valid_groups)
+            anova_text = f"F={f:.1f}, {'p<0.001' if p < 0.001 else f'p={p:.3f}'}"
+        else:
+            anova_text = "F=NA, p=NA"
+
         ax_vln.set_title(
-            f"{label}\nF={f:.1f}, "
-            f"{'p<0.001' if p<0.001 else f'p={p:.3f}'}\n"
-            f"[{expectation}]",
-            fontsize=8
+            f"{label}\n{anova_text}\n[{expectation}]",
+            fontsize=8,
         )
 
-        # Row 1: correlation with grade and outcome
         ax_cor = axes[1, col_i]
-        grade_vals = df_train["neoplasm_histologic_grade"].dropna()
-        gp_grade   = df_train.loc[grade_vals.index, gp].dropna()
-        common_idx = grade_vals.index.intersection(gp_grade.index)
-        r_grade, p_grade = stats.pearsonr(
-            grade_vals.loc[common_idx], gp_grade.loc[common_idx])
-        surv_vals = df_train["overall_survival"]
-        r_surv, p_surv = stats.pearsonr(
-            df_train[gp].dropna(),
-            surv_vals.loc[df_train[gp].dropna().index])
+        grade_idx = df_train[["neoplasm_histologic_grade", gp]].dropna().index
+        surv_idx = df_train[[gp, "overall_survival"]].dropna().index
 
-        # Scatter: GP vs grade (jittered)
-        jitter = np.random.default_rng(42).uniform(-0.15, 0.15, len(grade_vals))
-        ax_cor.scatter(grade_vals.values + jitter,
-                       df_train.loc[grade_vals.index, gp].values,
-                       alpha=0.12, s=5,
-                       c=[PAM50_COLORS.get(sub,"grey")
-                          for sub in df_train.loc[grade_vals.index,
-                          "pam50_+_claudin-low_subtype"].values])
-        # Trend line
-        m, b, *_ = stats.linregress(grade_vals.values,
-                                     df_train.loc[grade_vals.index, gp].values)
-        xl = np.array([1, 3])
-        ax_cor.plot(xl, m*xl+b, color="#2c3e50", lw=2)
+        if len(grade_idx) >= 3:
+            x_grade = df_train.loc[grade_idx, "neoplasm_histologic_grade"].astype(float)
+            y_grade = df_train.loc[grade_idx, gp].astype(float)
+            r_grade, p_grade = stats.pearsonr(x_grade, y_grade)
+
+            jitter = np.random.default_rng(42).uniform(-0.15, 0.15, len(grade_idx))
+            ax_cor.scatter(
+                x_grade.values + jitter,
+                y_grade.values,
+                alpha=0.12,
+                s=5,
+                c=[
+                    PAM50_COLORS.get(sub, "grey")
+                    for sub in df_train.loc[grade_idx, "pam50_+_claudin-low_subtype"].values
+                ],
+            )
+            m, b, *_ = stats.linregress(x_grade.values, y_grade.values)
+            xl = np.array([1, 3])
+            ax_cor.plot(xl, m * xl + b, color="#2c3e50", lw=2)
+        else:
+            r_grade, p_grade = np.nan, np.nan
+
+        if len(surv_idx) >= 3:
+            x_surv = df_train.loc[surv_idx, gp].astype(float)
+            y_surv = df_train.loc[surv_idx, "overall_survival"].astype(float)
+            r_surv, p_surv = stats.pearsonr(x_surv, y_surv)
+        else:
+            r_surv, p_surv = np.nan, np.nan
+
+        def _fmt_p(p):
+            if pd.isna(p):
+                return "p=NA"
+            return "p<0.001" if p < 0.001 else f"p={p:.3f}"
+
+        def _fmt_r(r):
+            return "NA" if pd.isna(r) else f"{r:.3f}"
+
         ax_cor.set_xticks([1, 2, 3])
-        ax_cor.set_xticklabels(["G1","G2","G3"])
+        ax_cor.set_xticklabels(["G1", "G2", "G3"])
         ax_cor.set_xlabel("Histologic grade")
         ax_cor.set_ylabel("GP score")
         ax_cor.set_title(
-            f"vs grade: r={r_grade:.3f} "
-            f"({'p<0.001' if p_grade<0.001 else f'p={p_grade:.3f}'})\n"
-            f"vs survival: r={r_surv:.3f} "
-            f"({'p<0.001' if p_surv<0.001 else f'p={p_surv:.3f}'})",
-            fontsize=8
+            f"vs grade: r={_fmt_r(r_grade)} ({_fmt_p(p_grade)})\n"
+            f"vs survival: r={_fmt_r(r_surv)} ({_fmt_p(p_surv)})",
+            fontsize=8,
         )
 
     fig.suptitle(
@@ -758,183 +793,629 @@ def fig_cohort_confounding_mitigation(df_train, gp_cols, out):
 # ══════════════════════════════════════════════════════════════════════════════
 # FIG 7 — Research questions and modelling rationale
 # ══════════════════════════════════════════════════════════════════════════════
+
 def fig_research_questions(df, gp_cols, df_train, out):
     """
-    Summary table linking data evidence to modelling decisions.
-    Counts and F-stats supporting each claim are computed here.
-    Interpretive text is manually annotated — labelled as such.
+    Research questions and modelling rationale adapted to the final 6-task pipeline.
+    Evidence values are computed here. Clinical-use wording is manually annotated.
     """
-    # Compute evidence values to embed in table
-    # M1: survival ANOVA by grade (evidence grade is prognostic)
-    f_grade_surv, p_gs = stats.f_oneway(
-        *[df.loc[df["neoplasm_histologic_grade"]==g,"overall_survival"].values
-          for g in [1.0, 2.0, 3.0]])
-    # M3: GP ANOVA by PAM50
+
+    def safe_numeric(s):
+        s = pd.to_numeric(pd.Series(s), errors="coerce")
+        return s.replace([np.inf, -np.inf], np.nan).dropna().astype(float)
+
+    def safe_anova_from_groups(groups):
+        clean = [safe_numeric(g).values for g in groups]
+        clean = [g for g in clean if len(g) >= 2]
+        if len(clean) < 2:
+            return np.nan, np.nan
+        try:
+            f, p = stats.f_oneway(*clean)
+            return float(f), float(p)
+        except Exception:
+            return np.nan, np.nan
+
+    def safe_pearson(x, y):
+        x = pd.to_numeric(pd.Series(x), errors="coerce")
+        y = pd.to_numeric(pd.Series(y), errors="coerce")
+        common = x.dropna().index.intersection(y.dropna().index)
+        if len(common) < 3:
+            return np.nan, np.nan
+        try:
+            r, p = stats.pearsonr(x.loc[common], y.loc[common])
+            return float(r), float(p)
+        except Exception:
+            return np.nan, np.nan
+
+    def fmt_p(p):
+        if pd.isna(p):
+            return "p=NA"
+        return "p<0.001" if p < 0.001 else f"p={p:.3f}"
+
+    def fmt_f(f):
+        return "NA" if pd.isna(f) else f"{f:.1f}"
+
+    def fmt_r(r):
+        return "NA" if pd.isna(r) else f"{r:.3f}"
+
+    # Evidence for M1a / M2a (all-cause)
+    grade_groups_os = [
+        df.loc[df["neoplasm_histologic_grade"] == g, "overall_survival"]
+        for g in [1.0, 2.0, 3.0]
+    ]
+    f_grade_os, p_grade_os = safe_anova_from_groups(grade_groups_os)
+
+    mask_cl = df["pam50_+_claudin-low_subtype"] == "claudin-low"
+    mask_lu = df["pam50_+_claudin-low_subtype"] == "LumA"
+    p_km_os = log_rank_p(
+        df.loc[mask_cl, "overall_survival_months"].values,
+        df.loc[mask_cl, "overall_survival"].values,
+        df.loc[mask_lu, "overall_survival_months"].values,
+        df.loc[mask_lu, "overall_survival"].values,
+    )
+
+    # Evidence for M1b / M2b (cancer-specific)
+    grade_groups_css = [
+        df.loc[df["neoplasm_histologic_grade"] == g, "death_from_cancer"]
+        for g in [1.0, 2.0, 3.0]
+    ]
+    f_grade_css, p_grade_css = safe_anova_from_groups(grade_groups_css)
+
+    subtype_groups_css = [
+        df.loc[df["pam50_+_claudin-low_subtype"] == sub, "death_from_cancer"]
+        for sub in PAM50_ORDER
+        if (df["pam50_+_claudin-low_subtype"] == sub).sum() >= 2
+    ]
+    f_sub_css, p_sub_css = safe_anova_from_groups(subtype_groups_css)
+
+    # Evidence for M3
     gp_f_max = 0.0
+    gp_best = None
     for gp in gp_cols:
-        groups = [df_train.loc[df_train["pam50_+_claudin-low_subtype"]==sub, gp].dropna()
-                  for sub in PAM50_ORDER if sub in df_train["pam50_+_claudin-low_subtype"].values]
-        groups = [g for g in groups if len(g) > 2]
-        if len(groups) >= 2:
-            f, _ = stats.f_oneway(*groups)
-            gp_f_max = max(gp_f_max, f)
-    # M4: GP correlation with grade
-    gp05 = df_train["gene_programme_05"]
-    grade_tr = df_train["neoplasm_histologic_grade"].dropna()
-    common = gp05.dropna().index.intersection(grade_tr.index)
-    r_gp05_grade, _ = stats.pearsonr(gp05.loc[common], grade_tr.loc[common])
-    # Survival: log-rank best vs worst subtype
-    mask_b = df["pam50_+_claudin-low_subtype"] == "claudin-low"
-    mask_l = df["pam50_+_claudin-low_subtype"] == "LumA"
-    p_km = log_rank_p(
-        df.loc[mask_b,"overall_survival_months"].values,
-        df.loc[mask_b,"overall_survival"].values,
-        df.loc[mask_l,"overall_survival_months"].values,
-        df.loc[mask_l,"overall_survival"].values)
+        groups = [
+            df_train.loc[df_train["pam50_+_claudin-low_subtype"] == sub, gp]
+            for sub in PAM50_ORDER
+            if (df_train["pam50_+_claudin-low_subtype"] == sub).sum() >= 2
+        ]
+        f, _ = safe_anova_from_groups(groups)
+        if not pd.isna(f) and f > gp_f_max:
+            gp_f_max = float(f)
+            gp_best = gp
+
+    # Evidence for M4
+    r_gp05_grade, p_gp05_grade = safe_pearson(
+        df_train["gene_programme_05"],
+        df_train["neoplasm_histologic_grade"],
+    )
 
     rows = [
-        ("M1", "Overall survival\n(binary classif.)",
-         f"Log-rank: claudin-low vs LumA\n"
-         f"{'p<0.001' if p_km<0.001 else f'p={p_km:.3f}'}\n"
-         f"Grade ANOVA: F={f_grade_surv:.1f}\n"
-         f"({'p<0.001' if p_gs<0.001 else f'p={p_gs:.3f}'})",
-         "Is this patient at risk of death?\n"
-         "Use at diagnosis for risk stratification.\n"
-         "[Clinical interpretation — manual]",
-         "overall_survival (binary)\nAUC-ROC metric\nTest set: frozen 381 rows"),
-        ("M2", "Survival time\n(Cox / time-to-event)",
-         f"Same evidence as M1.\n"
-         f"Cox model accounts for censoring.\n"
-         f"Requires lifelines>=0.27.0",
-         "When is this patient at risk?\n"
-         "Survival probability at 1/3/5 years.\n"
-         "[Manual — lifelines not yet available]",
-         "time + event (Cox target)\nC-index metric\nNote: FS uses event proxy"),
-        ("M3", "PAM50 molecular subtype\n(6-class classif.)",
-         f"GP ANOVA max F={gp_f_max:.0f} (p<0.001)\n"
-         f"Gene programmes highly discriminative\n"
-         f"for PAM50 subtypes",
-         "What is the molecular subtype?\n"
-         "For institutions without gene arrays.\n"
-         "[Manual]",
-         "pam50_target (6 classes)\nMacro-F1 metric\nRare classes dropped"),
-        ("M4", "Histologic grade\n(ordinal 1–3)",
-         f"GP05 vs grade: r={r_gp05_grade:.3f}\n"
-         f"Proliferation programme correlates\n"
-         f"with grade — biological basis exists",
-         "What grade would a molecular panel predict?\n"
-         "Second opinion / low-resource setting.\n"
-         "[Manual]",
-         "neoplasm_histologic_grade_ord\nQW-kappa metric\nNPI excluded"),
+        (
+            "M1a",
+            "Overall survival\n(binary classification)",
+            f"Log-rank claudin-low vs LumA:\n{fmt_p(p_km_os)}\n"
+            f"Grade ANOVA vs overall survival:\nF={fmt_f(f_grade_os)} ({fmt_p(p_grade_os)})",
+            "All-cause risk stratification at diagnosis.\n"
+            "Useful baseline, but mixes oncologic and non-oncologic mortality.\n"
+            "[Clinical interpretation — manual]",
+            "Target: overall_survival\nMetric: AUC-ROC\nShared frozen test set: 381 rows",
+        ),
+        (
+            "M1b",
+            "Cancer-specific survival\n(binary classification)",
+            f"Grade ANOVA vs death_from_cancer:\nF={fmt_f(f_grade_css)} ({fmt_p(p_grade_css)})\n"
+            f"PAM50 ANOVA vs death_from_cancer:\nF={fmt_f(f_sub_css)} ({fmt_p(p_sub_css)})",
+            "Cancer-specific risk stratification.\n"
+            "Best product-facing binary target.\n"
+            "[Clinical interpretation — manual]",
+            "Target: death_from_cancer\nMetric: AUC-ROC\nAligned to oncologic question",
+        ),
+        (
+            "M2a",
+            "Overall survival time\n(Cox, all-cause)",
+            "Same disease-separation evidence as M1a.\n"
+            "Time variable available for all rows.\n"
+            "Censoring handled explicitly in Cox.",
+            "All-cause time-to-event modelling.\n"
+            "Useful comparator, less specific clinically.\n"
+            "[Clinical interpretation — manual]",
+            "Target: overall_survival_months + overall_survival\nMetric: C-index\nLifelines Cox path",
+        ),
+        (
+            "M2b",
+            "Cancer-specific survival time\n(Cox, cancer-specific)",
+            "Same disease-separation evidence as M1b.\n"
+            "Grade/PAM50 both relate to cancer-specific death.\n"
+            "Censoring handled explicitly in Cox.",
+            "Cancer-specific time-to-event modelling.\n"
+            "Best survival-facing product target.\n"
+            "[Clinical interpretation — manual]",
+            "Target: overall_survival_months + death_from_cancer\nMetric: C-index\nLifelines Cox path",
+        ),
+        (
+            "M3",
+            "PAM50 molecular subtype\n(multiclass classification)",
+            f"Strongest programme ANOVA:\n{gp_best or 'NA'} with F={gp_f_max:.1f}\n"
+            "Gene programmes discriminate subtype structure.",
+            "Subtype inference support.\n"
+            "Useful when molecular subtype is unavailable or needs cross-checking.\n"
+            "[Clinical interpretation — manual]",
+            "Target: pam50_target (6 classes)\nMetric: Macro-F1\nRare classes dropped",
+        ),
+        (
+            "M4",
+            "Histologic grade\n(ordinal classification)",
+            f"GP05 vs grade correlation:\nr={fmt_r(r_gp05_grade)} ({fmt_p(p_gp05_grade)})\n"
+            "Supports a biological basis for grade prediction.",
+            "Structured pathology support / second-opinion framing.\n"
+            "Useful as a pathology companion task.\n"
+            "[Clinical interpretation — manual]",
+            "Target: neoplasm_histologic_grade_ord\nMetric: QW-kappa\nNPI excluded as leakage",
+        ),
     ]
 
-    model_colors = {"M1":"#3498db","M2":"#9b59b6","M3":"#e67e22","M4":"#2ecc71"}
+    model_colors = {
+        "M1a": "#3498db",
+        "M1b": "#1f77b4",
+        "M2a": "#9b59b6",
+        "M2b": "#7d3c98",
+        "M3": "#e67e22",
+        "M4": "#2ecc71",
+    }
 
-    fig_h = len(rows) * 1.5 + 2.0
-    fig, ax = plt.subplots(figsize=(19, fig_h))
+    fig_h = len(rows) * 1.28 + 2.2
+    fig, ax = plt.subplots(figsize=(20, fig_h))
     ax.axis("off")
-    ax.text(0.5, 0.985,
-            "Section 5 — Research Questions and Modelling Rationale",
-            transform=ax.transAxes, ha="center", va="top",
-            fontsize=13, fontweight="bold", color=HEAD_BG)
-    ax.text(0.5, 0.960,
-            "Evidence column: statistics computed here in this function. "
-            "Clinical use and interpretation columns: manually annotated.",
-            transform=ax.transAxes, ha="center", va="top",
-            fontsize=9, style="italic", color="#555")
+    ax.text(
+        0.5, 0.985,
+        "Section 5 — Research Questions and Modelling Rationale",
+        transform=ax.transAxes, ha="center", va="top",
+        fontsize=13, fontweight="bold", color=HEAD_BG,
+    )
+    ax.text(
+        0.5, 0.962,
+        "Evidence column: statistics computed here. Clinical-use wording: manually annotated. "
+        "Updated to the final 6-task pipeline (M1a/M1b/M2a/M2b/M3/M4).",
+        transform=ax.transAxes, ha="center", va="top",
+        fontsize=9, style="italic", color="#555",
+    )
 
-    headers = ["Model","Target / task",
-               "Data evidence (computed here)","Clinical use [manual]",
-               "Implementation notes"]
-    col_x   = [0.0, 0.07, 0.22, 0.46, 0.66]
-    col_w   = [0.07, 0.15, 0.24, 0.20, 0.27]
-    head_h  = 0.055; row_h = 0.185; sec_sep = 0.010
-    y       = 0.940
+    headers = ["Model", "Target / task", "Data evidence (computed here)", "Clinical use [manual]", "Implementation notes"]
+    col_x = [0.0, 0.07, 0.24, 0.48, 0.69]
+    col_w = [0.07, 0.17, 0.24, 0.21, 0.30]
+    head_h = 0.055
+    row_h = 0.130
+    sep = 0.010
+    y = 0.935
 
     for h, x, w in zip(headers, col_x, col_w):
-        ax.add_patch(plt.Rectangle((x, y-head_h), w-0.004, head_h,
-            facecolor=HEAD_BG, transform=ax.transAxes, clip_on=False))
-        ax.text(x+0.008, y-head_h/2, h, transform=ax.transAxes,
+        ax.add_patch(plt.Rectangle((x, y - head_h), w - 0.004, head_h,
+                                   facecolor=HEAD_BG, transform=ax.transAxes, clip_on=False))
+        ax.text(x + 0.008, y - head_h / 2, h, transform=ax.transAxes,
                 va="center", fontsize=9, fontweight="bold", color=HEAD_FG)
     y -= head_h
 
     for i, (model, task, evidence, use, impl) in enumerate(rows):
-        y -= (row_h + sec_sep)
+        y -= (row_h + sep)
         mc = model_colors.get(model, "#888")
-        # Model column
-        ax.add_patch(plt.Rectangle((col_x[0], y), col_w[0]-0.004, row_h,
-            facecolor=mc, transform=ax.transAxes, clip_on=False))
-        ax.text(col_x[0]+0.008, y+row_h/2, model,
-                transform=ax.transAxes, va="center",
-                fontsize=12, fontweight="bold", color="white")
-        # Other columns
-        for j, (txt, x, w) in enumerate(zip(
-                [task, evidence, use, impl],
-                col_x[1:], col_w[1:])):
-            bg = "#f0f4ff" if j == 1 else ROW_A if i%2==0 else ROW_B
-            ax.add_patch(plt.Rectangle((x, y), w-0.004, row_h,
-                facecolor=bg, edgecolor=BORDER, lw=0.3,
-                transform=ax.transAxes, clip_on=False))
-            ax.text(x+0.008, y+row_h*0.85, str(txt),
-                    transform=ax.transAxes, va="top",
-                    fontsize=8, color=CELL_FG, wrap=True)
+
+        ax.add_patch(plt.Rectangle((col_x[0], y), col_w[0] - 0.004, row_h,
+                                   facecolor=mc, transform=ax.transAxes, clip_on=False))
+        ax.text(col_x[0] + 0.018, y + row_h / 2, model, transform=ax.transAxes,
+                va="center", fontsize=13, fontweight="bold", color="white")
+
+        vals = [task, evidence, use, impl]
+        xs = col_x[1:]
+        ws = col_w[1:]
+        bg = ROW_A if i % 2 == 0 else ROW_B
+        for txt, x, w in zip(vals, xs, ws):
+            ax.add_patch(plt.Rectangle((x, y), w - 0.004, row_h,
+                                       facecolor=bg, edgecolor=BORDER, lw=0.3,
+                                       transform=ax.transAxes, clip_on=False))
+            ax.text(x + 0.008, y + row_h / 2, str(txt), transform=ax.transAxes,
+                    va="center", fontsize=8.5, color=CELL_FG)
 
     save(fig, out / "22_research_questions.png")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# MAIN
-# ══════════════════════════════════════════════════════════════════════════════
-def main():
-    p = argparse.ArgumentParser(
-        description="Notebook 03 — Clinical and Molecular Insights")
-    p.add_argument("--input", type=Path,
-                   default=Path("data") /
-                   "FCS_ml_test_input_data_rna_mutation.csv")
-    p.add_argument("--output-dir", type=Path,
-                   default=Path("outputs") / "notebook_05")
-    p.add_argument("--pipeline-outputs", type=Path,
-                   default=Path("outputs"))
-    args = p.parse_args()
 
+def load_table(path):
+    path = Path(path)
+    suffix = path.suffix.lower()
+    if suffix == ".csv":
+        return pd.read_csv(path)
+    if suffix in {".tsv", ".txt"}:
+        return pd.read_csv(path, sep="	")
+    if suffix == ".parquet":
+        return pd.read_parquet(path)
+    if suffix in {".pkl", ".pickle"}:
+        return pd.read_pickle(path)
+    raise ValueError(
+        f"Unsupported file type: {path.suffix}. "
+        "Use CSV, TSV, parquet, or pickle."
+    )
+
+
+def coerce_numeric_columns(df, columns):
+    df = df.copy()
+    for col in columns:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df
+
+
+def read_text_lines(path):
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"Required file not found: {path}")
+    return [line.strip() for line in path.read_text().splitlines() if line.strip()]
+
+
+def apply_deterministic_fixes(df):
+    df = df.copy()
+
+    if "patient_id" in df.columns and df["patient_id"].duplicated().any():
+        df = (
+            df.sort_values("patient_id")
+              .drop_duplicates(subset=["patient_id"], keep="first")
+              .reset_index(drop=True)
+        )
+
+    for col in df.select_dtypes(include="object").columns:
+        df[col] = df[col].str.strip()
+
+    if "cancer_type" in df.columns:
+        df.loc[df["cancer_type"] == "Breast Sarcoma", "cancer_type"] = "Breast Cancer"
+
+    if "er_status_measured_by_ihc" in df.columns:
+        mask = df["er_status_measured_by_ihc"].isin(["Posyte", "Positve"])
+        df.loc[mask, "er_status_measured_by_ihc"] = "Positive"
+
+    if "cancer_type_detailed" in df.columns:
+        df.loc[df["cancer_type_detailed"] == "Breast", "cancer_type_detailed"] = np.nan
+
+    if "geo_location_id" in df.columns:
+        df.loc[df["geo_location_id"] == 0, "geo_location_id"] = np.nan
+
+    if "age_at_diagnosis" in df.columns:
+        age = pd.to_numeric(df["age_at_diagnosis"], errors="coerce")
+        df["age_at_diagnosis"] = age.where(age.between(18, 100))
+
+    if "death_from_cancer" in df.columns:
+        mapped = df["death_from_cancer"].map(
+            {"Died of Disease": 1, "Died of Other Causes": 0, "Living": 0}
+        )
+        if mapped.notna().any():
+            df["death_from_cancer"] = mapped
+        df["death_from_cancer"] = pd.to_numeric(df["death_from_cancer"], errors="coerce")
+
+    numeric_cols = [
+        "overall_survival_months",
+        "overall_survival",
+        "neoplasm_histologic_grade",
+        "tumor_stage",
+        "tumor_size",
+        "lymph_nodes_examined_positive",
+        "mutation_count",
+        "nottingham_prognostic_index",
+        "cohort",
+    ]
+    df = coerce_numeric_columns(df, numeric_cols)
+
+    missing_target_mask = (
+        df["overall_survival"].isna() | df["overall_survival_months"].isna()
+    )
+    if missing_target_mask.any():
+        df = df.loc[~missing_target_mask].reset_index(drop=True)
+
+    return df
+
+
+def apply_basic_analysis_imputation(df, train_idx):
+    df = df.copy()
+    if len(df) == 0:
+        return df
+
+    train_idx = [i for i in train_idx if 0 <= i < len(df)]
+    if not train_idx:
+        train_idx = list(range(len(df)))
+    df_tr = df.iloc[train_idx]
+
+    if "age_at_diagnosis" in df.columns:
+        med = pd.to_numeric(df_tr["age_at_diagnosis"], errors="coerce").median()
+        if pd.notna(med):
+            df["age_at_diagnosis"] = pd.to_numeric(df["age_at_diagnosis"], errors="coerce").fillna(med)
+
+    if "mutation_count" in df.columns:
+        med = pd.to_numeric(df_tr["mutation_count"], errors="coerce").median()
+        if pd.notna(med):
+            df["mutation_count"] = pd.to_numeric(df["mutation_count"], errors="coerce").fillna(med)
+
+    if "tumor_size" in df.columns:
+        df["tumor_size"] = pd.to_numeric(df["tumor_size"], errors="coerce")
+        stage_col = pd.to_numeric(df.get("tumor_stage"), errors="coerce") if "tumor_stage" in df.columns else None
+        tr_stage = pd.to_numeric(df_tr.get("tumor_stage"), errors="coerce") if "tumor_stage" in df_tr.columns else None
+        global_med = pd.to_numeric(df_tr["tumor_size"], errors="coerce").median()
+        if stage_col is not None and tr_stage is not None:
+            for stage in tr_stage.dropna().unique():
+                stage_med = pd.to_numeric(df_tr.loc[tr_stage == stage, "tumor_size"], errors="coerce").median()
+                if pd.notna(stage_med):
+                    mask = stage_col.eq(stage) & df["tumor_size"].isna()
+                    df.loc[mask, "tumor_size"] = stage_med
+        if pd.notna(global_med):
+            df["tumor_size"] = df["tumor_size"].fillna(global_med)
+
+    for col in ["tumor_stage", "neoplasm_histologic_grade", "pam50_+_claudin-low_subtype", "er_status", "her2_status", "pr_status"]:
+        if col in df.columns:
+            series_tr = df_tr[col].dropna()
+            if not series_tr.empty:
+                df[col] = df[col].fillna(series_tr.mode().iloc[0])
+
+    return df
+
+
+def attach_gene_programmes(df, pipeline_outputs, train_idx):
+    out = Path(pipeline_outputs)
+    nmf_model_path = out / "nmf" / "nmf_model.joblib"
+    nmf_scaler_path = out / "nmf" / "nmf_minmax_scaler.joblib"
+    kept_genes_path = out / "metadata" / "kept_genes.txt"
+
+    if not nmf_model_path.exists():
+        raise FileNotFoundError(
+            f"NMF model not found: {nmf_model_path}. Run the pipeline first."
+        )
+    if not nmf_scaler_path.exists():
+        raise FileNotFoundError(
+            f"NMF scaler not found: {nmf_scaler_path}. Run the pipeline first."
+        )
+    kept_genes = read_text_lines(kept_genes_path)
+
+    import joblib
+
+    nmf = joblib.load(nmf_model_path)
+    nmf_scaler = joblib.load(nmf_scaler_path)
+
+    missing_genes = [g for g in kept_genes if g not in df.columns]
+    if missing_genes:
+        raise ValueError(
+            f"Input data are missing {len(missing_genes)} genes required by the saved NMF model. "
+            f"First missing genes: {missing_genes[:10]}"
+        )
+
+    gene_df = df[kept_genes].apply(pd.to_numeric, errors="coerce").clip(lower=-10, upper=10)
+    valid_train_idx = [i for i in train_idx if 0 <= i < len(gene_df)]
+    if not valid_train_idx:
+        valid_train_idx = list(range(len(gene_df)))
+    gene_train = gene_df.iloc[valid_train_idx]
+    gene_medians = gene_train.median(axis=0)
+    gene_df = gene_df.fillna(gene_medians).fillna(0.0)
+
+    full_scaled = np.clip(nmf_scaler.transform(gene_df.values), 0.0, 1.0)
+    W_full = nmf.transform(full_scaled)
+    prog_labels = [f"gene_programme_{i+1:02d}" for i in range(W_full.shape[1])]
+
+    df = df.copy()
+    for i, col in enumerate(prog_labels):
+        df[col] = W_full[:, i]
+    return df, prog_labels
+
+
+def infer_train_df(
+    df,
+    train_df=None,
+    split_col=None,
+    train_value="train",
+    pipeline_outputs=None,
+):
+    if train_df is not None:
+        return train_df.copy()
+
+    if split_col and split_col in df.columns:
+        mask = df[split_col].astype(str).str.lower() == str(train_value).lower()
+        return df.loc[mask].copy()
+
+    if "split" in df.columns:
+        return df.loc[df["split"].astype(str).str.lower() == "train"].copy()
+
+    if "is_train" in df.columns:
+        vals = df["is_train"]
+        if pd.api.types.is_bool_dtype(vals):
+            return df.loc[vals].copy()
+        mask = vals.astype(str).str.lower().isin({"1", "true", "train", "yes"})
+        return df.loc[mask].copy()
+
+    if pipeline_outputs is not None:
+        train_idx_path = Path(pipeline_outputs) / "metadata" / "shared_train_indices.csv"
+        if train_idx_path.exists():
+            idx = pd.read_csv(train_idx_path)["row_index"].astype(int).tolist()
+            idx = [i for i in idx if 0 <= i < len(df)]
+            if idx:
+                return df.iloc[idx].copy()
+
+    return df.copy()
+
+
+def ensure_required_columns(df, columns, df_name):
+    missing = [c for c in columns if c not in df.columns]
+    if missing:
+        raise ValueError(f"{df_name} is missing required columns: {missing}")
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Generate clinical and molecular validation figures."
+    )
+    parser.add_argument(
+        "--input",
+        type=Path,
+        default=Path("data") / "FCS_ml_test_input_data_rna_mutation.csv",
+        help="Raw METABRIC input table or a merged table that already contains gene programmes.",
+    )
+    parser.add_argument(
+        "--train-input",
+        type=Path,
+        default=None,
+        help="Optional path to a separate training table when --input already contains gene programmes.",
+    )
+    parser.add_argument(
+        "--pipeline-outputs",
+        type=Path,
+        default=Path("outputs"),
+        help="Pipeline outputs directory containing metadata/, nmf/, and saved artefacts.",
+    )
+    parser.add_argument(
+        "--outdir",
+        type=Path,
+        default=Path("outputs") / "notebook_05",
+        help="Directory for output figures.",
+    )
+    parser.add_argument(
+        "--split-col",
+        default=None,
+        help="Optional column in --input used to identify training rows when --input already contains gene programmes.",
+    )
+    parser.add_argument(
+        "--train-value",
+        default="train",
+        help="Value in --split-col that marks training rows.",
+    )
+    return parser.parse_args()
+
+
+def prepare_analysis_tables(args):
     if not args.input.exists():
         raise FileNotFoundError(f"Input not found: {args.input}")
 
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-    print(f"Loading data: {args.input}")
-    df = pd.read_csv(args.input)
-    for col in df.select_dtypes(include="object").columns:
-        df[col] = df[col].str.strip()
-    gene_cols = [c for c in df.columns if c not in CLINICAL]
+    df = load_table(args.input)
+    has_gp = any(str(c).startswith("gene_programme_") for c in df.columns)
 
-    print("Loading pipeline outputs...")
-    train_idx = pd.read_csv(
-        args.pipeline_outputs / "metadata" / "shared_train_indices.csv"
-    )["row_index"].tolist()
-    X_m1 = pd.read_csv(
-        args.pipeline_outputs / "splits" / "M1a_overall_survival" / "X_train.csv")
-    gp_cols = [c for c in X_m1.columns if c.startswith("gene_programme")]
-    H = pd.read_csv(
-        args.pipeline_outputs / "METABRIC_nmf_components.csv", index_col=0)
+    if has_gp:
+        df = apply_deterministic_fixes(df)
+        df = apply_basic_analysis_imputation(
+            df,
+            train_idx=list(range(len(df))),
+        )
+        train_df = load_table(args.train_input) if args.train_input else None
+        df_train = infer_train_df(
+            df=df,
+            train_df=train_df,
+            split_col=args.split_col,
+            train_value=args.train_value,
+            pipeline_outputs=args.pipeline_outputs,
+        )
+        df_train = apply_basic_analysis_imputation(
+            df_train,
+            train_idx=list(range(len(df_train))),
+        )
+        gp_cols = sorted([c for c in df.columns if str(c).startswith("gene_programme_")])
+        return df, df_train, gp_cols, "merged_table"
 
-    # Build training dataframe with GP scores
-    df_train = df.iloc[train_idx].reset_index(drop=True)
-    df_train = pd.concat(
-        [df_train, X_m1[gp_cols].reset_index(drop=True)], axis=1)
+    df = apply_deterministic_fixes(df)
 
-    print(f"\nGenerating figures → {args.output_dir}/\n")
+    train_idx_path = args.pipeline_outputs / "metadata" / "shared_train_indices.csv"
+    if train_idx_path.exists():
+        train_idx = pd.read_csv(train_idx_path)["row_index"].astype(int).tolist()
+    else:
+        train_idx = list(range(len(df)))
 
-    fig_km_pam50(df, args.output_dir)
-    fig_km_grade_receptor(df, args.output_dir)
-    fig_gp_pam50_heatmap(df_train, gp_cols, args.output_dir)
-    fig_gp_spotlight(df_train, gp_cols, H, args.output_dir)
-    fig_clinical_correlations(df, args.output_dir)
-    fig_cohort_confounding_mitigation(df_train, gp_cols, args.output_dir)
-    fig_research_questions(df, gp_cols, df_train, args.output_dir)
+    df = apply_basic_analysis_imputation(df, train_idx)
+    df, gp_cols = attach_gene_programmes(df, args.pipeline_outputs, train_idx)
+    df_train = infer_train_df(
+        df=df,
+        train_df=None,
+        split_col=None,
+        train_value=args.train_value,
+        pipeline_outputs=args.pipeline_outputs,
+    )
+    df_train = apply_basic_analysis_imputation(
+        df_train,
+        train_idx=list(range(len(df_train))),
+    )
+    return df, df_train, gp_cols, "raw_plus_pipeline_outputs"
 
-    print(f"\n✓ All figures saved to: {args.output_dir}/")
-    for f in sorted(args.output_dir.glob("*.png")):
-        print(f"  {f.name}")
+
+def main():
+    args = parse_args()
+
+    df, df_train, gp_cols, mode = prepare_analysis_tables(args)
+
+    numeric_cols = [
+        "overall_survival_months",
+        "overall_survival",
+        "death_from_cancer",
+        "neoplasm_histologic_grade",
+        "tumor_stage",
+        "tumor_size",
+        "lymph_nodes_examined_positive",
+        "mutation_count",
+        "nottingham_prognostic_index",
+        "cohort",
+    ]
+    df = coerce_numeric_columns(df, numeric_cols)
+    df_train = coerce_numeric_columns(df_train, numeric_cols)
+
+    if not gp_cols:
+        raise ValueError(
+            "No gene programme columns found or reconstructed. "
+            "Run the pipeline first, or pass a merged table that already contains gene programmes."
+        )
+
+    required_all = [
+        "pam50_+_claudin-low_subtype",
+        "overall_survival_months",
+        "overall_survival",
+        "neoplasm_histologic_grade",
+        "er_status",
+        "her2_status",
+        "tumor_size",
+        "tumor_stage",
+        "lymph_nodes_examined_positive",
+        "mutation_count",
+        "nottingham_prognostic_index",
+        "death_from_cancer",
+    ]
+    required_train = required_all + ["cohort"]
+
+    ensure_required_columns(df, required_all, "Analysis table")
+    ensure_required_columns(df_train, required_train, "Training analysis table")
+
+    out = Path(args.outdir)
+    out.mkdir(parents=True, exist_ok=True)
+
+    print(f"Input mode: {mode}")
+    print(f"Loaded analysis table: {len(df):,} rows, {df.shape[1]:,} columns")
+    print(f"Loaded training table: {len(df_train):,} rows, {df_train.shape[1]:,} columns")
+    print(f"Detected {len(gp_cols)} gene programme columns")
+    print(f"Writing figures to: {out}")
+
+    fig_km_pam50(df, out)
+    fig_km_grade_receptor(df, out)
+    fig_gp_pam50_heatmap(df_train, gp_cols, out)
+    fig_gp_spotlight(df_train, gp_cols, out)
+    fig_clinical_correlations(df, out)
+    fig_cohort_confounding_mitigation(df_train, gp_cols, out)
+    fig_research_questions(df, gp_cols, df_train, out)
+
+    manifest = {
+        "input": str(Path(args.input)),
+        "train_input": str(Path(args.train_input)) if args.train_input else None,
+        "pipeline_outputs": str(Path(args.pipeline_outputs)),
+        "outdir": str(out),
+        "input_mode": mode,
+        "n_rows_input": int(len(df)),
+        "n_rows_train": int(len(df_train)),
+        "n_gene_programmes": int(len(gp_cols)),
+        "figures": [
+            "16_km_pam50.png",
+            "17_km_grade_receptor.png",
+            "18_gp_pam50_heatmap.png",
+            "19_gp_spotlight.png",
+            "20_clinical_correlations.png",
+            "21_cohort_confounding_mitigation.png",
+            "22_research_questions.png",
+        ],
+    }
+    (out / "manifest.json").write_text(json.dumps(manifest, indent=2))
+    print(f"Saved: {(out / 'manifest.json').name}")
 
 
 if __name__ == "__main__":
