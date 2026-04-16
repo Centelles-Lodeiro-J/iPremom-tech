@@ -26,8 +26,6 @@ The repository is organised as a notebook-style pipeline implemented as Python s
 
 ```text
 src/                     core scripts
-scripts/                 helper runners and export utilities
-.vscode/                 launch and task definitions
 technical_reports/       technical Word reports for each stage
 outputs/                 generated artefacts (kept out of version control)
 data/                    local input data only (kept out of version control)
@@ -53,14 +51,6 @@ The VS Code launch and task files in this repository assume the interpreter path
 ```text
 .venv/Scripts/python.exe
 ```
-
-If your local environment uses a different path, update:
-
-- `.vscode/launch.json`
-- `.vscode/tasks.json`
-- `.vscode/launch.json`
-- `scripts/run_full_pipeline.ps1`
-- `scripts/run_full_pipeline.sh`
 
 ## Expected local inputs
 
@@ -100,27 +90,7 @@ The canonical order is:
 
 ## Running from VS Code
 
-### Option 1: task runner
-
-Open the repository root in VS Code and run the task:
-
-- **Run full METABRIC notebook pipeline**
-
-### Option 2: PowerShell runner
-
-From the repository root:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\run_full_pipeline.ps1
-```
-
-### Option 3: Bash runner
-
-```bash
-bash ./scripts/run_full_pipeline.sh
-```
-
-### Option 4: run directly without helper scripts
+### Run directly without helper scripts
 
 From the repository root, run the scripts one by one in canonical order:
 
