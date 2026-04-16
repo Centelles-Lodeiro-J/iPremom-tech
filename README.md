@@ -333,3 +333,14 @@ Before pushing, check that the public repository does **not** contain:
 - temporary outputs
 - machine-specific editor state
 - private or redistribution-restricted data you do not want in Git history
+
+- ## Optional dashboard (you can see the final output as a gif (dashboard/dashboard_demo, without the need to install or run the dashboard) 
+
+An optional React/Next dashboard can be added under `dashboard/` to visualise exported pipeline summaries (made for fun).  
+It is just intended as a presentation layer for:
+- locked model results
+- M1b calibration and threshold summaries
+- M2b risk-group and competing-risks summaries
+- stability and transport diagnostics
+
+If you want to set it up, see `dashboard/README.md` for setup details.
