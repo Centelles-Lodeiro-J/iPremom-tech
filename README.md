@@ -221,26 +221,22 @@ The final pipeline reflects a set of deliberate implementation choices that defi
 4. **Cancer-specific endpoints improve the clinical relevance of the project.**  
    The repository is stronger because it does not collapse everything into all-cause mortality.
 
-5. **Calibration and threshold reporting matter for clinically framed binary tasks.**  
-   AUC alone is not sufficient when the output is intended to support risk communication or action thresholds.
-
-6. **Sensitivity analyses improve transparency.**  
+5. **Sensitivity analyses improve transparency.**  
    Cohort transport and competing-risks analyses make the repository more honest about where results are stable and where caution is needed.
 
-7. **Not all tasks should be presented with the same level of confidence.**  
+6. **Not all tasks should be presented with the same level of confidence.**  
    PAM50 and survival tasks are stronger; grade prediction is useful but clearly weaker.
 
 ### Limitations
 
 - **No external validation yet**
-- **Biology is stronger than before, but not yet fully multi-omic**
-- **Competing-risks modelling remains a sensitivity layer rather than the primary survival estimand**
+- **Biology not fully multi-omic**
 - **M4 remains the weakest predictive task**
 - **Public reproducibility depends on local data access and a prepared local environment**
 
 ### Bottom line
 
-The repository is best understood as a **reproducible, leakage-aware, multi-task METABRIC modelling pipeline** that combines:
+The repository is best understood as a **leakage-aware, multi-task METABRIC modelling pipeline** that combines:
 - disciplined preprocessing,
 - training-only model selection,
 - final locked held-out evaluation,
@@ -248,7 +244,7 @@ The repository is best understood as a **reproducible, leakage-aware, multi-task
 - pathway and microenvironment validation,
 - and a structured technical documentation layer.
 
-It is strongest as a **well-documented modelling and analysis pipeline**. It is not yet a fully externalized clinical deployment package, and it is not yet a full multi-omic discovery platform, but it provides a coherent and methodologically careful end-to-end workflow.
+It is strongest as a **well-documented modelling and analysis pipeline**. It is not yet a fully externalized clinical deployment package, but it provides a coherent and methodologically careful end-to-end workflow.
 
 ---
 
