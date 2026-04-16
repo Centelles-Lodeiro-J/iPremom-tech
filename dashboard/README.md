@@ -2,6 +2,8 @@
 
 This dashboard is an optional frontend for visualising exported summaries from the Python pipeline.
 
+## **SEE dashboard_demo.gif for the final output without the need to run the code** 
+
 ## Purpose
 
 The app is designed to present:
@@ -53,6 +55,4 @@ http://localhost:3000
 
 ## Notes
 
-- The repository should usually **not** track real local JSON exports by default.
-- Keep `public/pipeline-data/` empty in Git, or include only tiny demo files if you explicitly want a public sample.
 - The dashboard is a presentation layer for the pipeline, not the analytical core of the project.
