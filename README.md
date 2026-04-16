@@ -46,15 +46,10 @@ The recommended public setup is:
 2. prepare the local Python environment using your private/internal dependency notes
 3. keep that environment out of Git
 
-The VS Code launch and task files in this repository assume the interpreter path:
-
-```text
-.venv/Scripts/python.exe
-```
-
 ## Expected local inputs
 
-The pipeline expects a local METABRIC-derived input file. Raw data are not included in the public repository.
+The pipeline expects an input file, (FCS_ml_test_input_data_rna_mutation.csv;
+raw data included in the repository).
 
 Default expected path:
 
@@ -65,8 +60,6 @@ data/FCS_ml_test_input_data_rna_mutation.csv
 If your input file is stored elsewhere, edit the relevant script arguments or run the scripts with explicit `--input` paths.
 
 ## Canonical run order
-
-Use the VS Code task **Run full METABRIC notebook pipeline** or the PowerShell script in `scripts/run_full_pipeline.ps1`.
 
 The canonical order is:
 
