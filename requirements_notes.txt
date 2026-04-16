@@ -1,0 +1,7 @@
+Minimal runtime requirements are based on imports seen in the uploaded pipeline and notebook scripts.
+Development requirements add testing and notebook convenience packages.
+
+Not included in runtime:
+- python-docx: not imported by the repository pipeline/notebook scripts audited here.
+- openpyxl: kept in dev only unless you use spreadsheet export/edit workflows locally.
+- low-level IPython/Jupyter support packages: kept in dev only.
