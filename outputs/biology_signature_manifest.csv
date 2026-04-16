@@ -1,0 +1,11 @@
+signature,family,n_genes_used,positive_genes_used,negative_genes_used
+pathway_proliferation_score,pathway,7,"aurka,ccnb1,cdc25a,cdk1,cdk2,cdk4,cdk6",
+pathway_her2_score,pathway,6,"erbb2,erbb3,erbb4,egfr,cdh1,epcam",
+pathway_luminal_score,pathway,5,"gata3,mapt,rab25,cdh1,epcam",
+pathway_immune_ifn_score,pathway,6,"stat1,stat2,jak1,jak2,hla-g,csf1r",
+pathway_emt_stroma_score,pathway,8,"fn1,mmp2,mmp9,mmp11,mmp14,col6a3,col12a1,col22a1",
+pathway_dna_repair_score,pathway,8,"brca1,brca2,fanca,fancd2,rad50,rad51,rad51c,rad51d",
+immune_innate_score,microenvironment,7,"csf1,csf1r,stat1,stat2,jak1,jak2,hla-g",
+stromal_matrix_score,microenvironment,7,"col6a3,col12a1,col22a1,fn1,mmp2,mmp11,mmp14",
+epithelial_differentiation_score,microenvironment,5,"epcam,cdh1,erbb3,erbb4,rab25",
+cell_cycle_checkpoint_score,pathway,10,"cdc25a,cdk1,cdk2,cdk4,cdk6,cdkn1a,cdkn1b,cdkn2a,cdkn2b,cdkn2c",

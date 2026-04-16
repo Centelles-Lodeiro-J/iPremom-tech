@@ -1,0 +1,19 @@
+{
+  "input": "data\\FCS_ml_test_input_data_rna_mutation.csv",
+  "train_input": null,
+  "pipeline_outputs": "outputs",
+  "outdir": "outputs\\notebook_05",
+  "input_mode": "raw_plus_pipeline_outputs",
+  "n_rows_input": 1904,
+  "n_rows_train": 1523,
+  "n_gene_programmes": 15,
+  "figures": [
+    "16_km_pam50.png",
+    "17_km_grade_receptor.png",
+    "18_gp_pam50_heatmap.png",
+    "19_gp_spotlight.png",
+    "20_clinical_correlations.png",
+    "21_cohort_confounding_mitigation.png",
+    "22_research_questions.png"
+  ]
+}
