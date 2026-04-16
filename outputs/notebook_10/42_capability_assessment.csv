@@ -1,0 +1,7 @@
+Model,Metric,Score,Can do,Cannot do,algorithm,pr_auc,brier_score,ece,ci_low,ci_high,prevalence
+M1a overall survival,AUC-ROC,0.7845871040723983,Risk stratification,External validation still needed,EN (L1+L2),0.7460422088547922,0.1891361767435075,0.0681284495707243,0.7415137557723822,0.8358593885993864,0.4199475065616798
+M1b cancer-specific survival,AUC-ROC,0.7010625,Risk stratification,External validation still needed,LR (L2),0.5145730889686091,0.2198228464622047,0.1430303839453109,0.6574040498849064,0.7585963609212402,0.3280839895013123
+M3 PAM50 subtype,Macro-F1,0.7333789887038544,Subtype prediction,External validation still needed,EN (L1+L2),,,,0.6867524773591582,0.7864635836631836,
+M4 histologic grade,QW-Kappa,0.5133220649523245,Grade support,External validation still needed,LR (L2),,,,0.4399301121208642,0.5664712039073133,
+M2a overall survival Cox,C-index,0.7572720388436011,Ranks patients by survival risk with censoring handled,Provide exact individual survival times,,,,,,,
+M2b cancer-specific Cox,C-index,0.7236949737934377,Ranks patients by survival risk with censoring handled,Provide exact individual survival times,,,,,,,

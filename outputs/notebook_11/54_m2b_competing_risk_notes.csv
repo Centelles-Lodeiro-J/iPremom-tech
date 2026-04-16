@@ -1,0 +1,2 @@
+analysis_type,main_model,interpretation
+Aalen-Johansen competing-risks sensitivity,M2b cause-specific Cox remains unchanged,"This is a sensitivity analysis, not a Fine-Gray regression replacement."

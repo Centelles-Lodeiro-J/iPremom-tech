@@ -1,0 +1,3 @@
+Penalizer used (multivariable): 0.1
+Penalizer used (drop-column base): 0.1
+Input features after Cox cleaning: 85
