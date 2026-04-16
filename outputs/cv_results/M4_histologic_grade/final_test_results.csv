@@ -1,0 +1,2 @@
+algorithm,metric,test_score,ci_low,ci_high,n_test,selection_basis
+LR (L2),QW-Kappa,0.5133220649523245,0.4399301121208642,0.5664712039073133,381,winner locked by training_cv before test evaluation

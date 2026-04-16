@@ -1,0 +1,2 @@
+algorithm,metric,test_score,ci_low,ci_high,n_test,selection_basis,pr_auc,brier_score,ece,prevalence
+LR (L2),AUC-ROC,0.7010625,0.6574040498849064,0.7585963609212402,381,winner locked by training_cv before test evaluation,0.5145730889686091,0.2198228464622047,0.14303038394531092,0.32808398950131235

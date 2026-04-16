@@ -1,0 +1,6 @@
+Model,task_key,cohort,n_train,n_valid,metric,valid_score
+M4 histologic grade,M4_histologic_grade,1,1141,382,QW-Kappa,0.4676525559891137
+M4 histologic grade,M4_histologic_grade,2,1291,232,QW-Kappa,0.5215497265733617
+M4 histologic grade,M4_histologic_grade,3,920,603,QW-Kappa,0.3541485867451748
+M4 histologic grade,M4_histologic_grade,4,1349,174,QW-Kappa,0.5371528792750657
+M4 histologic grade,M4_histologic_grade,5,1391,132,QW-Kappa,0.3924418604651163

@@ -1,0 +1,117 @@
+{
+  "pipeline_version": "v4_m1ab_m2ab_clean",
+  "script": "pipeline.py",
+  "design": "Option A \u2014 one shared stratified split",
+  "split": {
+    "test_size": 0.2,
+    "random_state": 42,
+    "n_train": 1523,
+    "n_test": 381,
+    "stratify_col": "overall_survival"
+  },
+  "nmf": {
+    "k": 15,
+    "max_iter": 5000,
+    "tol": 0.0001,
+    "seed": 42,
+    "converged": true,
+    "n_iter": 461,
+    "reconstruction_err": 82.3896,
+    "fitted_on": "training rows only"
+  },
+  "gene_filtering": {
+    "nzv_threshold": 0.5,
+    "genes_total": 489,
+    "genes_kept": 480,
+    "genes_dropped": 9
+  },
+  "biology_signatures": {
+    "n_signatures": 10,
+    "signatures": [
+      "pathway_proliferation_score",
+      "pathway_her2_score",
+      "pathway_luminal_score",
+      "pathway_immune_ifn_score",
+      "pathway_emt_stroma_score",
+      "pathway_dna_repair_score",
+      "immune_innate_score",
+      "stromal_matrix_score",
+      "epithelial_differentiation_score",
+      "cell_cycle_checkpoint_score"
+    ],
+    "manifest_file": "biology_signature_manifest.csv"
+  },
+  "imputation": {
+    "age_at_diagnosis_median": 61.84,
+    "mutation_count_median": 5.0,
+    "tumor_size_median_stage1": 17.0,
+    "tumor_size_median_stage2": 25.0,
+    "tumor_size_median_stage3": 45.0,
+    "tumor_size_median_stage0": 35.0,
+    "tumor_size_median_stage4": 33.0,
+    "tumor_size_global_median": 22.0,
+    "tumor_stage_rf_fitted_on_n": 1084,
+    "tumor_stage_mode_fallback": 2.0,
+    "neoplasm_histologic_grade_rf_n": 1455,
+    "neoplasm_histologic_grade_mode_fallback": 3.0,
+    "cellularity_mode": "High",
+    "type_of_breast_surgery_mode": "MASTECTOMY",
+    "inferred_menopausal_state_mode": "Post",
+    "primary_tumor_laterality_mode": "Left",
+    "er_status_mode": "Positive",
+    "her2_status_mode": "Negative",
+    "pr_status_mode": "Positive",
+    "her2_status_measured_by_snp6_mode": "NEUTRAL",
+    "integrative_cluster_mode": "8",
+    "pam50_+_claudin-low_subtype_mode": "LumA",
+    "tumor_other_histologic_subtype_mode": "Ductal/NST",
+    "3-gene_classifier_subtype_mode": "ER+/HER2- Low Prolif",
+    "oncotree_code_mode": "IDC",
+    "er_status_measured_by_ihc_mode": "Positive",
+    "cancer_type_detailed_mode": "Breast Invasive Ductal Carcinoma"
+  },
+  "pam50_rare_dropped": [
+    "NC",
+    "Other",
+    "Unknown"
+  ],
+  "npi_excluded": true,
+  "npi_reason": "NPI = 0.2*size + lymph_node_stage + grade. Structural redundancy (VIF=15.7). Direct leakage into M4 (grade prediction, r=0.75).",
+  "ohe_3gene_excluded_from": [
+    "M1a_overall_survival",
+    "M1b_cancer_specific_survival",
+    "M2a_overall_survival_cox",
+    "M2b_cancer_specific_cox"
+  ],
+  "ohe_3gene_reason": "ohe_3gene_her2plus r=0.80 with her2_status_bin",
+  "m5_dropped": true,
+  "m5_reason": "Confounded by indication \u2014 models prescribing behaviour not treatment efficacy.",
+  "models": {
+    "M1a_overall_survival": {
+      "task": "binary",
+      "n_features": 91
+    },
+    "M1b_cancer_specific_survival": {
+      "task": "binary",
+      "n_features": 91
+    },
+    "M2a_overall_survival_cox": {
+      "task": "cox",
+      "n_features": 91
+    },
+    "M2b_cancer_specific_cox": {
+      "task": "cox",
+      "n_features": 91
+    },
+    "M3_pam50_subtype": {
+      "task": "multiclass",
+      "n_features": 78,
+      "n_rare_dropped_train": 4,
+      "n_rare_dropped_test": 2
+    },
+    "M4_histologic_grade": {
+      "task": "ordinal",
+      "n_features": 94
+    }
+  }
+}

@@ -1,0 +1,6 @@
+Model,task_key,cohort,n_train,n_valid,metric,valid_score
+M3 PAM50 subtype,M3_pam50_subtype,1,1137,382,Macro-F1,0.6814253115401206
+M3 PAM50 subtype,M3_pam50_subtype,2,1288,231,Macro-F1,0.7055002665421161
+M3 PAM50 subtype,M3_pam50_subtype,3,918,601,Macro-F1,0.685744639606323
+M3 PAM50 subtype,M3_pam50_subtype,4,1345,174,Macro-F1,0.7245323245699268
+M3 PAM50 subtype,M3_pam50_subtype,5,1388,131,Macro-F1,0.6510992328927112

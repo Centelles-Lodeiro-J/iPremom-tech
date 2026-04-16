@@ -1,0 +1,26 @@
+{
+  "timestamp_utc": "2026-04-16T10:52:17.973768+00:00",
+  "python_executable": "C:\\Users\\u0132327\\Downloads\\iPremom_tech_project\\.venv\\Scripts\\python.exe",
+  "python_version": "3.12.1 (tags/v3.12.1:2305ca5, Dec  7 2023, 22:03:25) [MSC v.1937 64 bit (AMD64)]",
+  "platform": {
+    "system": "Windows",
+    "release": "11",
+    "version": "10.0.22631",
+    "machine": "AMD64"
+  },
+  "cwd": "C:\\Users\\u0132327\\Downloads\\iPremom_tech_project",
+  "package_versions": {
+    "numpy": "2.4.4",
+    "pandas": "2.3.3",
+    "scipy": "1.17.1",
+    "scikit-learn": "1.8.0",
+    "matplotlib": "3.10.8",
+    "seaborn": "0.13.2",
+    "joblib": "1.5.3",
+    "lifelines": "0.30.3",
+    "pytest": "9.0.3"
+  },
+  "pip_freeze_file": "outputs\\metadata\\requirements_runtime_frozen.txt",
+  "script_hash_file": "outputs\\metadata\\script_hashes.csv",
+  "input_hash_file": "outputs\\metadata\\input_file_hashes.csv"
+}

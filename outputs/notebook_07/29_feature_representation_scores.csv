@@ -1,0 +1,17 @@
+task_key,Model,feature_set,n_features,cv_score_mean,metric
+M1a_overall_survival,M1a overall survival,A,18,0.7621628053482699,AUC-ROC
+M1a_overall_survival,M1a overall survival,B,29,0.766527830112442,AUC-ROC
+M1a_overall_survival,M1a overall survival,C,18,0.7621628053482699,AUC-ROC
+M1a_overall_survival,M1a overall survival,D,29,0.766527830112442,AUC-ROC
+M1b_cancer_specific_survival,M1b cancer-specific survival,A,20,0.7273778170050014,AUC-ROC
+M1b_cancer_specific_survival,M1b cancer-specific survival,B,32,0.7273163957835519,AUC-ROC
+M1b_cancer_specific_survival,M1b cancer-specific survival,C,20,0.7273778170050014,AUC-ROC
+M1b_cancer_specific_survival,M1b cancer-specific survival,D,32,0.7273163957835519,AUC-ROC
+M3_pam50_subtype,M3 PAM50 subtype,A,18,0.6458194921837777,Macro-F1
+M3_pam50_subtype,M3 PAM50 subtype,B,30,0.7199184653321,Macro-F1
+M3_pam50_subtype,M3 PAM50 subtype,C,18,0.6458194921837777,Macro-F1
+M3_pam50_subtype,M3 PAM50 subtype,D,30,0.7199184653321,Macro-F1
+M4_histologic_grade,M4 histologic grade,A,18,0.4872958579904795,QW-Kappa
+M4_histologic_grade,M4 histologic grade,B,32,0.5126457170636867,QW-Kappa
+M4_histologic_grade,M4 histologic grade,C,18,0.4872958579904795,QW-Kappa
+M4_histologic_grade,M4 histologic grade,D,32,0.5126457170636867,QW-Kappa

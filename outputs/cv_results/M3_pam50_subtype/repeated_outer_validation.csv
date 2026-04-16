@@ -1,0 +1,11 @@
+Model,task_key,algorithm,repeat,metric,valid_score,n_train,n_valid
+M3 PAM50 subtype,M3_pam50_subtype,EN (L1+L2),1,Macro-F1,0.6954177804177805,1215,304
+M3 PAM50 subtype,M3_pam50_subtype,EN (L1+L2),2,Macro-F1,0.7340993808500658,1215,304
+M3 PAM50 subtype,M3_pam50_subtype,EN (L1+L2),3,Macro-F1,0.7405579789768727,1215,304
+M3 PAM50 subtype,M3_pam50_subtype,EN (L1+L2),4,Macro-F1,0.7800136601749506,1215,304
+M3 PAM50 subtype,M3_pam50_subtype,EN (L1+L2),5,Macro-F1,0.7146378149798518,1215,304
+M3 PAM50 subtype,M3_pam50_subtype,EN (L1+L2),6,Macro-F1,0.71048500613718,1215,304
+M3 PAM50 subtype,M3_pam50_subtype,EN (L1+L2),7,Macro-F1,0.7314504491923847,1215,304
+M3 PAM50 subtype,M3_pam50_subtype,EN (L1+L2),8,Macro-F1,0.7048111389811171,1215,304
+M3 PAM50 subtype,M3_pam50_subtype,EN (L1+L2),9,Macro-F1,0.7351167624433576,1215,304
+M3 PAM50 subtype,M3_pam50_subtype,EN (L1+L2),10,Macro-F1,0.664361888148963,1215,304

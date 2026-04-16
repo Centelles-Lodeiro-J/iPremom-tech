@@ -1,0 +1,7 @@
+Model,Metric,Best algorithm,Test score
+M1a overall survival,AUC-ROC,EN (L1+L2),0.7845871040723983
+M1b cancer-specific survival,AUC-ROC,LR (L2),0.7010625
+M3 PAM50 subtype,Macro-F1,EN (L1+L2),0.7333789887038544
+M4 histologic grade,QW-Kappa,LR (L2),0.5133220649523245
+M2a overall survival Cox,C-index,CoxPH,0.7572720388436011
+M2b cancer-specific Cox,C-index,CoxPH,0.7236949737934377

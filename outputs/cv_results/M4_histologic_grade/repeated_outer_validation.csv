@@ -1,0 +1,11 @@
+Model,task_key,algorithm,repeat,metric,valid_score,n_train,n_valid
+M4 histologic grade,M4_histologic_grade,LR (L2),1,QW-Kappa,0.47980391155594126,1218,305
+M4 histologic grade,M4_histologic_grade,LR (L2),2,QW-Kappa,0.48247271605414366,1218,305
+M4 histologic grade,M4_histologic_grade,LR (L2),3,QW-Kappa,0.4240440074714177,1218,305
+M4 histologic grade,M4_histologic_grade,LR (L2),4,QW-Kappa,0.5032715220434869,1218,305
+M4 histologic grade,M4_histologic_grade,LR (L2),5,QW-Kappa,0.5831407151327559,1218,305
+M4 histologic grade,M4_histologic_grade,LR (L2),6,QW-Kappa,0.4783883380499624,1218,305
+M4 histologic grade,M4_histologic_grade,LR (L2),7,QW-Kappa,0.5693082693212888,1218,305
+M4 histologic grade,M4_histologic_grade,LR (L2),8,QW-Kappa,0.5168681287597353,1218,305
+M4 histologic grade,M4_histologic_grade,LR (L2),9,QW-Kappa,0.5018781642985465,1218,305
+M4 histologic grade,M4_histologic_grade,LR (L2),10,QW-Kappa,0.5454268941813425,1218,305

@@ -1,0 +1,4 @@
+algorithm,cv_score_mean,cv_score_sd,n_folds,selection_basis
+EN (L1+L2),0.7245463746851776,0.018451799309927165,5,training_cv
+LR (L2),0.7199184653321,0.021070881707888667,5,training_cv
+RF,0.6854337168965172,0.009656226784103437,5,training_cv

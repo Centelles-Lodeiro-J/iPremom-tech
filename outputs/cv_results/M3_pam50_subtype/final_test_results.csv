@@ -1,0 +1,2 @@
+algorithm,metric,test_score,ci_low,ci_high,n_test,selection_basis
+EN (L1+L2),Macro-F1,0.7333789887038544,0.6867524773591582,0.7864635836631836,379,winner locked by training_cv before test evaluation

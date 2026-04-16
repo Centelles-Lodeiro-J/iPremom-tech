@@ -1,0 +1,3 @@
+feature_set,cv_score_mean,cv_score_sd,n_folds,selection_basis
+A: Clinical,0.7368832218896044,0.008999772022520182,5,training_cv
+B: Clin+NMF,0.7486436343494087,0.005076933441789654,5,training_cv
